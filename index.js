@@ -31,6 +31,8 @@ async function run() {
     const productCollection = database.collection("products");
     const ordersCollection = database.collection("orders");
 
+    app.get("/", (req, res) => res.send("Code Cloud on Vercel"));
+
     //-----------users------------
 
     app.post("/api/users", async (req, res) => {
@@ -255,3 +257,4 @@ run().catch(console.dir);
 app.listen(port, () => {
   console.log(`Bootcamp React Node CRUD Server is Running on ${port}`);
 });
+module.exports = app;
