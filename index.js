@@ -253,6 +253,6 @@ async function run() {
 run().catch(console.dir);
 
 app.listen(port, () => {
-  console.log(`Bootcamp React Node CRUD Server is Running on ${port}`);
+  //console.log(`Bootcamp React Node CRUD Server is Running on ${port}`);
 });
 module.exports = app;
