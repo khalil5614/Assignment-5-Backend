@@ -8,8 +8,11 @@ const app = express();
 const port = process.env.PORT || 5000;
 // Allow specific origin
 const corsOptions = {
-  origin: "*",
-  optionsSuccessStatus: 200, // For legacy browser support
+  origin: "",
+  credential: true,
+  optionsSuccessStatus: 200,
+  methods: ["GET", "POST", "PUT", "DELETE"], // Allowed methods
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 app.use(cors(corsOptions));
