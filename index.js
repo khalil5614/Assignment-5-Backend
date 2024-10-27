@@ -6,7 +6,14 @@ require("dotenv").config();
 const app = express();
 
 const port = process.env.PORT || 5000;
-app.use(cors());
+// Allow specific origin
+const corsOptions = {
+  origin: "*",
+  optionsSuccessStatus: 200, // For legacy browser support
+};
+
+app.use(cors(corsOptions));
+//app.use(cors());
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_USER_PASSWORD}@freecluster.e76lb.mongodb.net/?retryWrites=true&w=majority&appName=FreeCluster`;
