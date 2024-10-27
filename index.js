@@ -104,7 +104,7 @@ async function run() {
 
     app.get("/api/categories/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: id };
+      const query = { _id: new ObjectId(id) };
       const result = await categoriesCollection.findOne(query);
 
       res.send(result);
@@ -162,11 +162,45 @@ async function run() {
     });
     app.get("/api/products/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: id };
+      const query = { _id: new ObjectId(id) };
       const result = await productCollection.findOne(query);
 
       res.send(result);
     });
+    app.put("/api/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const product = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const option = { upsert: true };
+
+      const updatedProduct = {
+        $set: {
+          title: product.title,
+          thumbnailUrl: product.thumbnailUrl,
+          details: product.details,
+          ratings: product.ratings,
+          price: product.price,
+          category: product.category,
+        },
+      };
+
+      const result = await productCollection.updateOne(
+        filter,
+        updatedProduct,
+        option
+      );
+      res.send(result);
+    });
+
+    app.delete("/api/products/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) };
+      // console.log("Delete product ", query);
+      const result = await productCollection.deleteOne(query);
+      res.send(result);
+    });
+
     //-----------end products------------
     //-----------buy products------------
 
@@ -175,23 +209,14 @@ async function run() {
 
       try {
         const user = await userCollection.findOne({ uid: userId });
-        const product = await productCollection.findOne({ _id: productId });
+        const product = await productCollection.findOne({
+          _id: new ObjectId(productId),
+        });
 
         if (!user || !product) {
           return res.status(404).json({ message: "User or Product not found" });
         }
         const totalAmount = product.price * quantity;
-
-        // if (product.stock < quantity) {
-        //   return res.status(400).json({ message: "Insufficient stock" });
-        // }
-
-        // // Deduct balance from user and reduce product stock
-        // product.stock -= quantity;
-
-        // // Save updates
-
-        //        await productCollection.save();
 
         // Create an order
         const order = {
@@ -209,7 +234,34 @@ async function run() {
         res.status(500).json({ message: error.message });
       }
     });
+    app.get("/api/orders/", async (req, res) => {
+      try {
+        const query = ordersCollection.find();
+        const result = await query.toArray();
+        res.send(result);
 
+        const orders = query.toArray();
+        if (!orders) {
+          return res.status(404).json({ error: "Order not found" });
+        }
+
+        const orderList = await Promise.all(
+          orders.map((order) => {
+            order.products.map(async (item) => {
+              const product = await productCollection.findOne(
+                { _id: item.prodId },
+                { projection: { title: 1, price: 1 } }
+              );
+              return { ...product, quantity: item.quantity };
+            });
+          })
+        );
+
+        res.status(200).json({ ...orders, user, orderList });
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
     // Get order details by order ID
     app.get("/api/orders/:orderId", async (req, res) => {
       try {
@@ -222,25 +274,80 @@ async function run() {
           return res.status(404).json({ error: "Order not found" });
         }
 
-        const user = await userCollection.findOne(
-          { uid: order.userId },
-          { projection: { name: 1, email: 1 } }
-        );
-        const products = await Promise.all(
-          order.products.map(async (item) => {
-            const product = await productCollection.findOne(
-              { _id: item.prodId },
-              { projection: { title: 1, price: 1 } }
-            );
-            return { ...product, quantity: item.quantity };
-          })
-        );
+        const user = await userCollection.findOne({ uid: order.userId });
+        //  const products = await Promise.all(
+        const orderProd = order.products.map(async (item) => {
+          const product = await productCollection.findOne(
+            { _id: new ObjectId(item.prodId) },
+            { projection: { title: 1, price: 1 } }
+          );
 
-        res.status(200).json({ ...order, user, products });
+          return { ...product, quantity: item.qty };
+        });
+        // );
+        res.status(200).json({ ...order, user, orderProd });
       } catch (err) {
         res.status(400).json({ error: err.message });
       }
     });
+
+    // Get order list by user
+    app.get("/api/orders/user/:userId", async (req, res) => {
+      try {
+        const userId = req.params.userId;
+        // const query = ordersCollection.find({
+        //   userId: userId,
+        // });
+        // const orders = query.toArray();
+
+        const filter = { userId: userId };
+        const query = ordersCollection.find(filter);
+        const userOrders = await query.toArray();
+
+        if (!userOrders) {
+          return res.status(404).json({ error: "Order not found" });
+        }
+
+        // const user = await userCollection.findOne(
+        //   { uid: userId },
+        //   { projection: { displayName: 1 } }
+        // );
+        //  console.log("user: ", user);
+
+        const orders = await Promise.all(
+          userOrders.map(async (order) => {
+            // For each order, map through products and resolve each async operation
+            const productDetails = await Promise.all(
+              order.products.map(async (item) => {
+                const product = await productCollection.findOne(
+                  { _id: new ObjectId(item.prodId) },
+                  { projection: { title: 1, price: 1 } }
+                );
+                // Return the merged product data with the item quantity (or any additional info)
+                return { ...product, qty: item.qty };
+              })
+            );
+
+            // Return the order with resolved product details
+            return { ...order, products: productDetails };
+          })
+        );
+
+        //res.status(200).json({ orders });
+        // res.status(200).json({ ...orders, user, orderProd });
+        res.send(orders);
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+    app.delete("/api/orders/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) };
+      const result = await ordersCollection.deleteOne(query);
+      res.send(result);
+    });
+    //-----------End Orders-----------------
 
     // Send a ping to confirm a successful connection
     //    await client.db("admin").command({ ping: 1 });
@@ -253,6 +360,6 @@ async function run() {
 run().catch(console.dir);
 
 app.listen(port, () => {
-  //console.log(`Bootcamp React Node CRUD Server is Running on ${port}`);
+  // console.log(`Bootcamp React Node CRUD Server is Running on ${port}`);
 });
 module.exports = app;
