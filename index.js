@@ -7,12 +7,17 @@ const app = express();
 
 const port = process.env.PORT || 5000;
 // Allow specific origin
+// const corsOptions = {
+//   origin: "",
+//   credential: true,
+//   optionsSuccessStatus: 200,
+//   methods: ["GET", "POST", "PUT", "DELETE"], // Allowed methods
+//   allowedHeaders: ["Content-Type", "Authorization"],
+// };
 const corsOptions = {
-  origin: "https://codecloud-assignment5.netlify.app",
-  credential: true,
-  optionsSuccessStatus: 200,
+  origin: "", // Allow your frontend origin
   methods: ["GET", "POST", "PUT", "DELETE"], // Allowed methods
-  allowedHeaders: ["Content-Type", "Authorization"],
+  credential: true,
 };
 
 app.use(cors(corsOptions));
