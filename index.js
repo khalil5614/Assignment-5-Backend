@@ -15,14 +15,32 @@ const port = process.env.PORT || 5000;
 //   allowedHeaders: ["Content-Type", "Authorization"],
 // };
 const corsOptions = {
-  origin: "", // Allow your frontend origin
-  methods: ["GET", "POST", "PUT", "DELETE"], // Allowed methods
-  credential: true,
+  origin: "http://localhost:5173/", // Allow your frontend origin
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], // Allowed methods
+  credentials: true,
 };
 
-app.use(cors(corsOptions));
+//app.use(cors(corsOptions));
 //app.use(cors());
 app.use(express.json());
+
+function setCorsHeaders(req, res, next) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    // Respond to preflight requests
+    return res.status(200).end();
+  }
+
+  next();
+}
+
+app.use(setCorsHeaders);
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_USER_PASSWORD}@freecluster.e76lb.mongodb.net/?retryWrites=true&w=majority&appName=FreeCluster`;
 
